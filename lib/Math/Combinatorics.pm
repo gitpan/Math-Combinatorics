@@ -97,6 +97,10 @@ details.
 
 =head1 SEE ALSO
 
+L<Set::Scalar>
+
+L<Set::Bag>
+
 L<String::Combination> (misnamed, it actually returns permutations on a string).
 
 http://perlmonks.thepen.com/29374.html
@@ -112,7 +116,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine permute factorial);
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 EXPORTED FUCTIONS
 
@@ -121,7 +125,7 @@ our $VERSION = '0.02';
  Usage   : my @combinations = combine($k,@n);
  Function: implements nCk (n choose k), or n!/(k!*(n-k!)).
            returns all unique unorderd combinations of k items from set n.
-           items in n can be scalars, or references... whatever.  they are
+           items in n are assumed to be character data, and are
            copied into the return data structure (see "Returns" below).
  Example : my @n = qw(a b c);
            my @c = combine(2,@n);
@@ -133,7 +137,11 @@ our $VERSION = '0.02';
  Returns : a list of arrays, where each array contains a unique combination
            of k items from n
  Args    : a list of items to be combined
-
+ Notes   : data is internally assumed to be alphanumeric.  this is necessary
+           to efficiently generate combinations of large sets.  if you need
+           combinations of non-alphanumeric data, or on data
+           C<sort {$a cmp $b}> would not be appropriate, use the
+           object-oriented API.  See L</new()> and the B<compare> option.
 
 =cut
 
@@ -155,8 +163,8 @@ sub combine {
  Usage   : my @permutations = permute(@n);
  Function: implements nPk (n permute k) (where k == n), or n!/(n-k)!
             returns all unique permutations of k items from set n
-           (where n == k, see "Note" below).  items in n can be scalars,
-           references... whatever.  they are copied into the return data
+           (where n == k, see "Note" below).  items in n are assumed to
+           be character data, and are copied into the return data
            structure.
  Example : my @n = qw(a b c);
            my @p = permute(@n);
@@ -174,6 +182,11 @@ sub combine {
  Note    : k should really be parameterizable.  this will happen
            in a later version of the module.  send me a patch to
            make that version come out sooner.
+ Notes   : data is internally assumed to be alphanumeric.  this is necessary
+           to efficiently generate combinations of large sets.  if you need
+           combinations of non-alphanumeric data, or on data
+           C<sort {$a cmp $b}> would not be appropriate, use the
+           object-oriented API.  See L</new()>, and the B<compare> option.
 
 =cut
 
@@ -194,7 +207,7 @@ sub permute {
 
  Usage   : my $f = factorial(4); #returns 24, or 4*3*2*1
  Function: calculates n! (n factorial).
- Returns : undef if n is non-integer or n < 1
+ Returns : undef if n is non-integer or n < 0
  Args    : a positive, non-zero integer
  Note    : this function is used internally by combine() and permute()
 
@@ -202,7 +215,7 @@ sub permute {
 
 sub factorial {
   my $n = shift;
-  return undef unless $n > 0 and $n == int($n);
+  return undef unless $n >= 0 and $n == int($n);
 
   my $f;
 
@@ -224,20 +237,33 @@ sub factorial {
                                            );
  Function: build a new Math::Combinatorics object.
  Returns : a Math::Combinatorics object
- Args    : count - required for combinatoric functions/methods.  number of elements to be
-                   present in returned set(s).
-           data  - required for combinatoric B<AND> permutagenic functions/methods.  this is the
-                   set elements are chosen from.  B<NOTE>: this array is modified in place; make
-                   a copy of your array if the order matters in the caller's space.
+ Args    : count   - required for combinatoric functions/methods.  number of elements to be
+                     present in returned set(s).
+           data    - required for combinatoric B<AND> permutagenic functions/methods.  this is the
+                     set elements are chosen from.  B<NOTE>: this array is modified in place; make
+                     a copy of your array if the order matters in the caller's space.
+           compare - optional subroutine reference used in sorting elements of the set.  examples:
+
+                       #appropriate for character elements
+                       compare => sub { $_[0] cmp $_[1] }               
+                       #appropriate for numeric elements
+                       compare => sub { $_[0] <=> $_[1] }
+                       #appropriate for object elements, perhaps
+                       compare => sub { $_[0]->value <=> $_[1]->value }
+
+                     defaults to "sub { $_[0] cmp $_[1] }"
 
 =cut
 
 sub new {
   my($class,%arg) = @_;
   my $self = bless {}, $class;
-  $self->{data}    = $arg{data};
-  $self->{count}   = $arg{count};
   $self->{compare} = $arg{compare} || sub { $_[0] cmp $_[1] };
+  $self->{count}   = $arg{count};
+
+  my $compare = $self->{compare};
+
+  $self->{data}    = [sort {&$compare($a,$b)} @{$arg{data}}];
 
   $self->{cin} = 1;
   $self->{pin} = 1;

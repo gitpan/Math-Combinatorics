@@ -8,3 +8,11 @@ Revision history for Perl extension Math::Combinatorics.
       o Combinations/Permutations now calculated using iterator.
         Uses less memory for very large sets (David Coppit, Tye,
         Christopher Eltschka).
+
+0.03  o Added reference to Set::Scalar, Set::Bag
+      o new() accepts a 'compare' option.
+      o new() presorts the set by this ('compare' value is a sorting
+        subroutine code reference).  this addresses a combine/permute
+        bug when using a set of references, identified by Ying Yang
+        <yyang@emba.uvm.edu>.
+        
