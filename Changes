@@ -4,3 +4,7 @@ Revision history for Perl extension Math::Combinatorics.
 	- original version; created by h2xs 1.21 with options
 		-AXn Math::Combinatorics
 
+0.02  o Bugfix to permute() method, reported by Marc Logghe.
+      o Combinations/Permutations now calculated using iterator.
+        Uses less memory for very large sets (David Coppit, Tye,
+        Christopher Eltschka).

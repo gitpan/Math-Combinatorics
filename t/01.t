@@ -3,21 +3,62 @@ BEGIN {
   use strict;
   use Test::More;
 
-  plan tests => 4;
+  plan tests => 8;
 
   use_ok('Data::Dumper');
   use_ok('Math::Combinatorics');
-  use Math::Combinatorics qw(combine permute);
 }
 
-my @n = qw(a b c);
-ok(my @c = combine(2,@n));
-ok(my @p = permute(@n));
+my @data = qw( a b c d );
 
-#print "combinations of 2 from: ".join(" ",@n)."\n";
-#print "------------------------".("--" x scalar(@n))."\n";
-#print join("\n", map { join " ", @$_ } combine(2,@n)),"\n";
+my $f = 0;
+my @r;
+my $c;
+
+$c = Math::Combinatorics->new(
+                              data => \@data,
+                              count => 2,
+                             );
+
+$f = 0;
+while(my(@combo) = $c->next_combination){
+  $f++;
+}
+ok($f == 6);
+
+$c = Math::Combinatorics->new(
+                              data => \@data,
+                              count => 3,
+                             );
+$f = 0;
+while(my(@combo) = $c->next_combination){
+  $f++;
+}
+ok($f == 4);
+
+@r = combine(2,@data);
+ok(scalar(@r) == 6);
+
+@r = combine(3,@data);
+ok(scalar(@r) == 4);
+
+#####################
+
+$c = Math::Combinatorics->new(
+                              data => \@data,
+                              count => 2,
+                             );
+
+$f = 0;
+while(my(@combo) = $c->next_permutation){
+  $f++;
+}
+ok($f == 24);
+
+@r = permute(@data);
+ok(scalar(@r) == 24);
+
+#my @c = permute(@data);
+##print join "\n", sort { $a cmp $b } map { join " ", @$_ } @c;
+#print join "\n", map { join " ", @$_ } @c;
 #print "\n";
-#print "permutations of 3 from: ".join(" ",@n)."\n";
-#print "------------------------".("--" x scalar(@n))."\n";
-#print join("\n", map { join " ", @$_ } permute(@n)),"\n";

@@ -1,12 +1,37 @@
-# Below is stub documentation for your module. You better edit it!
-
 =head1 NAME
 
 Math::Combinatorics - Perform combinations and permutations on lists
 
 =head1 SYNOPSIS
 
-  use Math::Combinatorics qw(combine permute);
+Available as an object oriented API.
+
+  use Math::Combinatorics;
+
+  my @n = qw(a b c);
+  my $combinat = Math::Combinatorics->new(count => 2,
+                                          data => [@n],
+                                         );
+
+  print "combinations of 2 from: ".join(" ",@n)."\n";
+  print "------------------------".("--" x scalar(@n))."\n";
+  while(my @combo = $combinat->next_combination){
+    print join(' ', @combo)."\n";
+  }
+
+  print "\n";
+
+  print "combinations of 2 from: ".join(" ",@n)."\n";
+  print "------------------------".("--" x scalar(@n))."\n";
+  while(my @permu = $combinat->next_permutation){
+    print join(' ', @permu)."\n";
+  }
+
+  output:
+
+Or available via exported functions 'permute', 'combine', and 'factorial'.
+
+  use Math::Combinatorics;
 
   my @n = qw(a b c);
   print "combinations of 2 from: ".join(" ",@n)."\n";
@@ -17,21 +42,26 @@ Math::Combinatorics - Perform combinations and permutations on lists
   print "------------------------".("--" x scalar(@n))."\n";
   print join("\n", map { join " ", @$_ } permute(@n)),"\n";
 
-  output:
+
+Output:
+
   combinations of 2 from: a b c
   ------------------------------
-  b c
-  a c
   a b
+  a c
+  b c
 
-  permutations of 3 from: a b c
+  combinations of 2 from: a b c
   ------------------------------
+  a b c
+  a c b
   b a c
   b c a
-  c b a
   c a b
-  a c b
-  a b c
+  c b a
+
+Output from both types of calls is the same, but the object-oriented approach consumes
+much less memory for large sets.
 
 =head1 DESCRIPTION
 
@@ -56,7 +86,8 @@ method descriptions.
 
 =head1 AUTHOR
 
-Allen Day <allenday@ucla.edu>
+Allen Day <allenday@ucla.edu>, with algorithmic contributions from Christopher Eltschka and
+Tye.
 
 =head1 BUGS
 
@@ -68,6 +99,10 @@ details.
 
 L<String::Combination> (misnamed, it actually returns permutations on a string).
 
+http://perlmonks.thepen.com/29374.html
+
+http://groups.google.com/groups?selm=38568F79.13680B86%40physik.tu-muenchen.de&output=gplain
+
 =cut
 
 package Math::Combinatorics;
@@ -77,9 +112,9 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine permute factorial);
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
-=head1 METHODS
+=head1 EXPORTED FUCTIONS
 
 =head2 combine()
 
@@ -104,34 +139,15 @@ our $VERSION = '0.01';
 
 sub combine {
   my($k,@n) = @_;
-  my $nlen = scalar(@n);
 
-  if(($k != int($k)) or ($k < 1)){
-    $@ = "k must be a non-zero positive integer";
-    return ();
-  } elsif($nlen == 1 || $nlen == $k){
-    return ([@n]);
-  } elsif($nlen < $k) {
-    $@ = "k is greater than number of list elements";
-    return ();
-  } else {
-    #good to go
+  my @result = ();
 
-    my @result;
-
-    for(my $i = 1 ; $i <= 2 ** $nlen ; $i++){
-      my @b = split '', sprintf("%0${nlen}b",$i);
-      next unless sum(@b) == $k;
-
-      my @tmp = ();
-      for( my $i = 0; $i < scalar(@b) ; $i++){
-        push @tmp, $n[$i] if $b[$i] == 1;
-      }
-      push @result, \@tmp;
-    }
-
-    return @result;
+  my $c = __PACKAGE__->new(data => [@n], count => $k);
+  while(my(@combo) = $c->next_combination){
+    push @result, [@combo];
   }
+
+  return @result;
 }
 
 =head2 permute()
@@ -163,25 +179,12 @@ sub combine {
 
 sub permute {
   my(@n) = @_;
-  return () unless @n;
-  return @n if scalar(@n) == 1;
 
-  my @result;
+  my @result = ();
 
-  my $i = 0;
-  my $nlen = scalar(@n);
-
-  my $perm_n = factorial(scalar(@n));
-#  my $perm_n = factorial($k);
-
-  while($i < $perm_n) {
-    for(my $j = 0; $j < $nlen - 1; $j++,$i++) {
-
-      ($n[$j],$n[$j+1]) = ($n[$j+1],$n[$j]); #swap
-
-      my @tmp = @n; #copy
-      push @result, \@tmp;
-    }
+  my $c = __PACKAGE__->new(data => [@n]);
+  while(my(@combo) = $c->next_permutation){
+    push @result, [@combo];
   }
 
   return @result;
@@ -210,6 +213,171 @@ sub factorial {
   return $f;
 }
 
+=head1 METHODS
+
+=cut
+
+=head2 new()
+
+ Usage   : my $c = Math::Combinatorics->new( count => 2,       #treated as int
+                                             data => [1,2,3,4] #arrayref or anonymous array
+                                           );
+ Function: build a new Math::Combinatorics object.
+ Returns : a Math::Combinatorics object
+ Args    : count - required for combinatoric functions/methods.  number of elements to be
+                   present in returned set(s).
+           data  - required for combinatoric B<AND> permutagenic functions/methods.  this is the
+                   set elements are chosen from.  B<NOTE>: this array is modified in place; make
+                   a copy of your array if the order matters in the caller's space.
+
+=cut
+
+sub new {
+  my($class,%arg) = @_;
+  my $self = bless {}, $class;
+  $self->{data}    = $arg{data};
+  $self->{count}   = $arg{count};
+  $self->{compare} = $arg{compare} || sub { $_[0] cmp $_[1] };
+
+  $self->{cin} = 1;
+  $self->{pin} = 1;
+
+  return $self;
+}
+
+=head2 next_combination()
+
+ Usage   : my @combo = $c->next_combination();
+ Function: get combinations of size $count from @data.
+ Returns : returns a combination of $count items from @data (see L</new()>).
+           repeated calls retrieve all unique combinations of $count elements.
+           a returned empty list signifies all combinations have been iterated.
+ Args    : none.
+
+=cut
+
+sub next_combination {
+  my $self = shift;
+  my $data = $self->data();
+  my $combo_end = $self->count();
+
+  my $begin = 0;
+  my $end = $#{$data} + 1;
+
+  my @result;
+
+  if($self->{cin}){
+    $self->{cin} = 0;
+
+    for(0..$self->count-1){
+      push @result, $data->[$_];
+    }
+    return @result;
+  }
+
+  if ($combo_end == $begin || $combo_end == $end) {
+    return ();
+  }
+
+  my $combo = $combo_end;
+  my $total_set;
+
+  --$combo;
+  $total_set = $self->upper_bound($combo_end,$end,$data->[$combo]);
+  if ($total_set != $end) {
+    $self->swap($combo,$total_set);
+
+    for(0..$self->count-1){
+      push @result, $data->[$_];
+    }
+    return @result;
+  }
+
+  --$total_set;
+  $combo = $self->lower_bound($begin, $combo_end, $data->[$total_set]);
+
+  if ($combo == $begin) {
+    $self->rotate($begin, $combo_end, $end);
+    return ();
+  }
+
+  my $combo_next = $combo;
+  --$combo;
+  $total_set = $self->upper_bound($combo_end, $end, $data->[$combo]);
+
+  my $sort_pos = $end;
+  $sort_pos += $combo_end - $total_set - 1;
+
+  $self->rotate($combo_next, $total_set, $end);
+  $self->rotate($combo, $combo_next, $end);
+  $self->rotate($combo_end, $sort_pos, $end);
+
+#warn @$data;
+
+  for(0..$self->count-1){
+    push @result, $data->[$_];
+  }
+  return @result;
+}
+
+=head2 next_permutation()
+
+ Usage   : my @permu = $c->next_permutation();
+ Function: get permutations of elements in @data.
+ Returns : returns a permutation of items from @data (see L</new()>).
+           repeated calls retrieve all unique permutations of @data elements.
+           a returned empty list signifies all permutations have been iterated.
+ Args    : none.
+
+=cut
+
+sub next_permutation {
+  my $self = shift;
+  my $data = $self->data();
+
+  if($self->{pin}){
+    $self->{pin} = 0;
+    return @$data;
+  }
+
+  my $cursor = $self->_permutation_cursor();
+
+  my $last= $#{$cursor};
+
+  if($last < 1){
+    return ();
+  }
+
+  # Find last item not in reverse-sorted order:
+  my $i = $last - 1;
+  $i-- while  0 <= $i  &&  $cursor->[$i] >= $cursor->[$i+1];
+
+  if($i == -1){
+    return ();
+  }
+
+
+  # Re-sort the reversely-sorted tail of the list:
+  @{$cursor}[$i+1..$last] = reverse @{$cursor}[$i+1..$last]
+    if $cursor->[$i+1] > $cursor->[$last];
+
+  # Find next item that will make us "greater":
+  my $j = $i+1;
+  $j++ while  $cursor->[$i] >= $cursor->[$j];
+
+  # Swap:
+  @{$cursor}[$i,$j] = @{$cursor}[$j,$i];
+
+  # map cursor to data array
+  my @result;
+  foreach my $c (@$cursor){
+    push @result, $data->[$c];
+  }
+  return @result;
+}
+
+=head1 INTERNAL FUNCTIONS AND METHODS
+
 =head2 sum()
 
  Usage   : my $sum = sum(1,2,3); # returns 6
@@ -226,6 +394,219 @@ sub sum {
     $sum += $i if $i == int($i);
   }
   return $sum;
+}
+
+=head2 compare()
+
+ Usage   : $obj->compare()
+ Function: internal, undocumented.  holds a comparison coderef.
+ Returns : value of compare (a coderef)
+
+
+=cut
+
+sub compare {
+  my($self,$val) = @_;
+  return $self->{'compare'};
+}
+
+
+=head2 count()
+
+ Usage   : $obj->count()
+ Function: internal, undocumented.  holds the "k" in nCk or nPk.
+ Returns : value of count (an int)
+
+=cut
+
+sub count {
+  my($self) = @_;
+  return $self->{'count'};
+}
+
+
+=head2 data()
+
+ Usage   : $obj->data()
+ Function: internal, undocumented.  holds the set "n" in nCk or nPk.
+ Returns : value of data (an arrayref)
+
+=cut
+
+sub data {
+  my($self) = @_;
+  return $self->{'data'};
+}
+
+
+=head2 swap()
+
+internal, undocumented.
+
+=cut
+
+sub swap {
+  my $self = shift;
+  my $first = shift;
+  my $second = shift;
+  my $data = $self->data();
+
+  my $temp = $data->[$first];
+  $data->[$first] = $data->[$second];
+  $data->[$second] = $temp;
+}
+
+=head2 reverse()
+
+internal, undocumented.
+
+=cut
+
+sub reverse {
+  my $self = shift;
+  my $first = shift;
+  my $last = shift;
+  my $data = $self->data();
+
+  while (1) {
+    if ($first == $last || $first == --$last) {
+      return;
+    } else {
+      $self->swap($first++, $last);
+    }
+  }
+}
+
+=head2 rotate()
+
+internal, undocumented.
+
+=cut
+
+sub rotate {
+  my $self = shift;
+  my $first = shift;
+  my $middle = shift;
+  my $last = shift;
+  my $data = $self->data();
+
+  if ($first == $middle || $last == $middle) {
+    return;
+  }
+
+  my $first2 = $middle;
+
+  do {
+    $self->swap($first++, $first2++);
+
+    if ($first == $middle) {
+      $middle = $first2;
+    }
+  } while ($first2 != $last);
+
+  $first2 = $middle;
+
+  while ($first2 != $last) {
+    $self->swap($first++, $first2++);
+    if ($first == $middle) {
+      $middle = $first2;
+    } elsif ($first2 == $last) {
+      $first2 = $middle;
+    }
+  }
+}
+
+=head2 upper_bound()
+
+internal, undocumented.
+
+=cut
+
+sub upper_bound {
+  my $self = shift;
+  my $first = shift;
+  my $last = shift;
+  my $value = shift;
+  my $compare = $self->compare();
+  my $data = $self->data();
+
+  my $len = $last - $first;
+  my $half;
+  my $middle;
+
+  while ($len > 0) {
+    $half = $len >> 1;
+    $middle = $first;
+    $middle += $half;
+
+    if (&$compare($value,$data->[$middle]) == -1) {
+      $len = $half;
+    } else {
+      $first = $middle;
+      ++$first;
+      $len = $len - $half - 1;
+    }
+  }
+
+  return $first;
+}
+
+=head2 lower_bound()
+
+internal, undocumented.
+
+=cut
+
+sub lower_bound {
+  my $self = shift;
+  my $first = shift;
+  my $last = shift;
+  my $value = shift;
+  my $compare = $self->compare();
+  my $data = $self->data();
+
+  my $len = $last - $first;
+  my $half;
+  my $middle;
+
+  while ($len > 0) {
+    $half = $len >> 1;
+    $middle = $first;
+    $middle += $half;
+
+    if (&$compare($data->[$middle],$value) == -1) {
+      $first = $middle;
+      ++$first;
+      $len = $len - $half - 1;
+    } else {
+      $len = $half;
+    }
+  }
+
+  return $first;
+}
+
+=head2 _permutation_cursor()
+
+ Usage   : $obj->_permutation_cursor()
+ Function: internal method.  cursor on permutation iterator order.
+ Returns : value of _permutation_cursor (an arrayref)
+ Args    : none
+
+=cut
+
+sub _permutation_cursor {
+  my($self,$val) = @_;
+
+  if(!$self->{'_permutation_cursor'}){
+    my $data = $self->data();
+    my @tmp = ();
+    my $i = 0;
+    push @tmp, $i++ foreach @$data;
+    $self->{'_permutation_cursor'} = \@tmp;
+  }
+
+  return $self->{'_permutation_cursor'};
 }
 
 1;
