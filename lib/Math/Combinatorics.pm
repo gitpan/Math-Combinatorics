@@ -72,7 +72,23 @@ their properties.  As a jumping off point, refer to:
 http://mathworld.wolfram.com/Combinatorics.html
 
 This module provides a pure-perl implementation of nCk, nPk, and n! (combination,
-permutation, and factorial, respectively).
+permutation, and factorial, respectively).  Functional and object-oriented usages allow
+problems such as the following to be solved:
+
+nCk "Fun questions to ask the pizza parlor wait staff: how many possible combinations
+of 2 toppings can I get on my pizza?".
+
+nPk "Master Mind Game: ways to arrange pieces of different colors in a
+certain number of positions, without repetition of a color".
+
+Object-oriented usage additionally allows solving these problems by calling L</new()>
+with a B<frequency> vector:
+
+nPRk "morse signals: diferent signals of 3 positions using the 2 two symbol - and .".
+
+nCRk "ways to extract 3 balls at once of a bag with black and white balls".
+
+nPRk "different words obtained permuting the letters of the word PARROT".
 
 =head2 EXPORT
 
@@ -88,6 +104,14 @@ method descriptions.
 
 Allen Day <allenday@ucla.edu>, with algorithmic contributions from Christopher Eltschka and
 Tye.
+
+=head1 ACKNOWLEDGEMENTS
+
+Thanks to everyone for helping to make this a better module.
+
+For adding new features: Carlos Rica, David Coppit
+
+For bug reports: Ying Yang, Joerg Beyer, Marc Logghe
 
 =head1 BUGS
 
@@ -116,9 +140,9 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine permute factorial);
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
-=head1 EXPORTED FUCTIONS
+=head1 EXPORTED FUNCTIONS
 
 =head2 combine()
 
@@ -226,7 +250,7 @@ sub factorial {
   return $f;
 }
 
-=head1 METHODS
+=head1 CONSTRUCTOR
 
 =cut
 
@@ -237,12 +261,23 @@ sub factorial {
                                            );
  Function: build a new Math::Combinatorics object.
  Returns : a Math::Combinatorics object
- Args    : count   - required for combinatoric functions/methods.  number of elements to be
-                     present in returned set(s).
-           data    - required for combinatoric B<AND> permutagenic functions/methods.  this is the
-                     set elements are chosen from.  B<NOTE>: this array is modified in place; make
-                     a copy of your array if the order matters in the caller's space.
-           compare - optional subroutine reference used in sorting elements of the set.  examples:
+ Args    : count     - required for combinatoric functions/methods.  number of elements to be
+                       present in returned set(s).
+           data      - required for combinatoric B<AND> permutagenic functions/methods.  this is the
+                       set elements are chosen from.  B<NOTE>: this array is modified in place; make
+                       a copy of your array if the order matters in the caller's space.
+           frequency - optional vector of data frequencies.  must be the same length as the B<data>
+                       constructor argument.  These two constructor calls here are equivalent:
+
+                         $a = 'a';
+                         $b = 'b';
+
+                         Math::Combinatorics->new( count=>2, data=>[\$a,\$a,\$a,\$a,\$a,\$b,\$b] );
+                         Math::Combinatorics->new( count=>2, data=>[\$a,\$b], frequency=>[5,2] );
+
+                       so why use this?  sometimes it's useful to have multiple identical entities in
+                       a set (in set theory jargon, this is called a "bag", See L<Set::Bag>).
+           compare   - optional subroutine reference used in sorting elements of the set.  examples:
 
                        #appropriate for character elements
                        compare => sub { $_[0] cmp $_[1] }               
@@ -261,6 +296,22 @@ sub new {
   $self->{compare} = $arg{compare} || sub { $_[0] cmp $_[1] };
   $self->{count}   = $arg{count};
 
+  #convert bag to set
+  my $freq            = $arg{frequency};
+  if(ref($freq) eq 'ARRAY' and scalar(@$freq) == scalar(@{$arg{data}})){
+    my @bag = @{$arg{data}};
+    my @set = ();
+
+    while(my $type = shift @bag){
+      my $f = shift @$freq;
+      next if $f < 1;
+      for(1..$f){
+        push @set, $type;
+      }
+    }
+    $arg{data} = \@set;
+  }
+
   my $compare = $self->{compare};
 
   $self->{data}    = [sort {&$compare($a,$b)} @{$arg{data}}];
@@ -270,6 +321,10 @@ sub new {
 
   return $self;
 }
+
+=head1 OBJECT METHODS
+
+=cut
 
 =head2 next_combination()
 
