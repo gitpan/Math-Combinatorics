@@ -1,0 +1,6 @@
+Revision history for Perl extension Math::Combinatorics.
+
+0.01  Tue Sep 21 19:06:32 2004
+	- original version; created by h2xs 1.21 with options
+		-AXn Math::Combinatorics
+

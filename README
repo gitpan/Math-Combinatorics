@@ -1,0 +1,87 @@
+Math/Combinatorics version 0.01
+===============================
+
+NAME
+    Math::Combinatorics - Perform combinations and permutations on lists
+
+SYNOPSIS
+      use Math::Combinatorics qw(combine permute);
+
+      my @n = qw(a b c);
+      print "combinations of 2 from: ".join(" ",@n)."\n";
+      print "------------------------".("--" x scalar(@n))."\n";
+      print join("\n", map { join " ", @$_ } combine(2,@n)),"\n";
+      print "\n";
+      print "permutations of 3 from: ".join(" ",@n)."\n";
+      print "------------------------".("--" x scalar(@n))."\n";
+      print join("\n", map { join " ", @$_ } permute(@n)),"\n";
+
+      output:
+      combinations of 2 from: a b c
+      ------------------------------
+      b c
+      a c
+      a b
+
+      permutations of 3 from: a b c
+      ------------------------------
+      b a c
+      b c a
+      c b a
+      c a b
+      a c b
+      a b c
+
+DESCRIPTION
+
+    Combinatorics is the branch of mathematics studying the enumeration,
+    combination, and permutation of sets of elements and the mathematical relations
+    that characterize their properties.  As a jumping off point, refer to:
+
+    http://mathworld.wolfram.com/Combinatorics.html
+
+    This module provides a pure-perl implementation of nCk, nPk, and n!
+    (combination, permutation, and factorial, respectively).
+
+  EXPORT
+
+    the following export tags will bring a single method into the caller's
+    namespace. no symbols are exported by default. see pod documentation
+    below for method descriptions.
+
+      combine
+      permute
+      factorial
+
+AUTHOR
+    Allen Day <allenday@ucla.edu>
+
+BUGS
+    report them to the author. a known bug (partial implementation bug) does
+    not allow parameterization of k for nPk in permute(). it is assumed k ==
+    n. the permute() entry elsewhere in this document for details.
+
+SEE ALSO
+    the String::Combination manpage (misnamed, it actually returns
+    permutations on a string).
+
+
+INSTALLATION
+
+To install this module type the following:
+
+   perl Makefile.PL
+   make
+   make test
+   make install
+
+DEPENDENCIES
+
+  None
+
+COPYRIGHT AND LICENCE
+
+You may use and redistribute this module under the same terms as Perl itself.
+
+Copyright (C) 2004 Allen Day
+
