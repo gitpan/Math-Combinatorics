@@ -21,7 +21,7 @@ Available as an object oriented API.
 
   print "\n";
 
-  print "combinations of 2 from: ".join(" ",@n)."\n";
+  print "permutations of 3 from: ".join(" ",@n)."\n";
   print "------------------------".("--" x scalar(@n))."\n";
   while(my @permu = $combinat->next_permutation){
     print join(' ', @permu)."\n";
@@ -51,7 +51,7 @@ Output:
   a c
   b c
 
-  combinations of 2 from: a b c
+  permutations of 3 from: a b c
   ------------------------------
   a b c
   a c b
@@ -75,20 +75,49 @@ This module provides a pure-perl implementation of nCk, nPk, and n! (combination
 permutation, and factorial, respectively).  Functional and object-oriented usages allow
 problems such as the following to be solved:
 
-nCk "Fun questions to ask the pizza parlor wait staff: how many possible combinations
+=over
+
+=item nCk
+
+"Fun questions to ask the pizza parlor wait staff: how many possible combinations
 of 2 toppings can I get on my pizza?".
 
-nPk "Master Mind Game: ways to arrange pieces of different colors in a
-certain number of positions, without repetition of a color".
+=item nPk
+
+"Master Mind Game: ways to arrange pieces of different colors in a
+  certain number of positions, without repetition of a color".
+
+=back
 
 Object-oriented usage additionally allows solving these problems by calling L</new()>
 with a B<frequency> vector:
 
-nPRk "morse signals: diferent signals of 3 positions using the 2 two symbol - and .".
+=over
 
-nCRk "ways to extract 3 balls at once of a bag with black and white balls".
+=item nPRk
 
-nPRk "different words obtained permuting the letters of the word PARROT".
+"morse signals: diferent signals of 3 positions using the 2 two symbol - and .".
+
+  my $c = Math::Combinatorics->new(
+    count => 3,
+    data => ['a','b'],
+    frequency => [3,3],
+  );
+
+  while (my @x = $c->next_combination) {
+    my $d = Math::Combinatorics->new( data => \@x );
+    while (my @y = $d->next_permutation) {
+      print "@y\n";
+    }
+  }
+
+"different words obtained permuting the letters of the word PARROT".
+
+=item nCRk
+
+"ways to extract 3 balls at once of a bag with black and white balls".
+
+=back
 
 =head2 EXPORT
 
@@ -105,6 +134,9 @@ method descriptions.
 Allen Day <allenday@ucla.edu>, with algorithmic contributions from Christopher Eltschka and
 Tye.
 
+Copyright (c) 2004-2005 Allen Day. All rights reserved. This program is free software; you
+can redistribute it and/or modify it under the same terms as Perl itself.
+
 =head1 ACKNOWLEDGEMENTS
 
 Thanks to everyone for helping to make this a better module.
@@ -113,11 +145,19 @@ For adding new features: Carlos Rica, David Coppit
 
 For bug reports: Ying Yang, Joerg Beyer, Marc Logghe
 
-=head1 BUGS
+=head1 BUGS / TODO
 
-report them to the author.  a known bug (partial implementation bug) does not allow
-parameterization of k for nPk in permute().  it is assumed k == n.  L</permute()> for
-details.
+Report them to the author.
+
+* A known bug (more of a missing feature, actually) does not allow parameterization of k
+for nPk in permute().  it is assumed k == n.  L</permute()> for details.  You can work
+around this by making calls to both L</permute()> and L</combine()>
+
+* No implementation of Stirling Numbers of the Second Kind, or Bell Numbers.
+
+http://mathworld.wolfram.com/StirlingNumberoftheSecondKind.html
+
+http://mathworld.wolfram.com/BellNumber.html
 
 =head1 SEE ALSO
 
@@ -125,7 +165,7 @@ L<Set::Scalar>
 
 L<Set::Bag>
 
-L<String::Combination> (misnamed, it actually returns permutations on a string).
+L<String::Combination> (alas misnamed, it actually returns permutations on a string).
 
 http://perlmonks.thepen.com/29374.html
 
@@ -140,7 +180,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine permute factorial);
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 EXPORTED FUNCTIONS
 
