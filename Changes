@@ -15,4 +15,6 @@ Revision history for Perl extension Math::Combinatorics.
         subroutine code reference).  this addresses a combine/permute
         bug when using a set of references, identified by Ying Yang
         <yyang@emba.uvm.edu>.
-        
+
+0.06  o Added multiset, string, and derangement methods for OO mode
+      o Corrections to documentation examples

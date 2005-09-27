@@ -69,23 +69,34 @@ Combinatorics is the branch of mathematics studying the enumeration, combination
 and permutation of sets of elements and the mathematical relations that characterize
 their properties.  As a jumping off point, refer to:
 
-http://mathworld.wolfram.com/Combinatorics.html
+ http://mathworld.wolfram.com/Combinatorics.html
 
-This module provides a pure-perl implementation of nCk, nPk, and n! (combination,
-permutation, and factorial, respectively).  Functional and object-oriented usages allow
-problems such as the following to be solved:
+This module provides a pure-perl implementation of nCk, nCRk, nPk, nPRk, !n and n!
+(combination, multiset, permutation, string, derangement, and factorial, respectively).
+Functional and object-oriented usages allow problems such as the following to be solved:
 
 =over
 
-=item nCk
+=item combine - nCk
+
+ http://mathworld.wolfram.com/Combination.html
 
 "Fun questions to ask the pizza parlor wait staff: how many possible combinations
 of 2 toppings can I get on my pizza?".
 
-=item nPk
+=item derange - !n
+
+ http://mathworld.wolfram.com/Derangement.html
+
+"A derangement of n ordered objects, denoted !n, is a permutation in which none of the
+objects appear in their "natural" (i.e., ordered) place."
+
+=item permute - nPk
+
+ http://mathworld.wolfram.com/Permutation.html
 
 "Master Mind Game: ways to arrange pieces of different colors in a
-  certain number of positions, without repetition of a color".
+certain number of positions, without repetition of a color".
 
 =back
 
@@ -94,28 +105,30 @@ with a B<frequency> vector:
 
 =over
 
-=item nPRk
+=item string - nPRk
 
-"morse signals: diferent signals of 3 positions using the 2 two symbol - and .".
+ http://mathworld.wolfram.com/String.html
 
-  my $c = Math::Combinatorics->new(
-    count => 3,
-    data => ['a','b'],
-    frequency => [3,3],
-  );
+"Morse signals: diferent signals of 3 positions using the two symbols - and .".
 
-  while (my @x = $c->next_combination) {
-    my $d = Math::Combinatorics->new( data => \@x );
-    while (my @y = $d->next_permutation) {
-      print "@y\n";
-    }
-  }
+ $o = Math::Combinatorics->new( count=>3 , data=>[qw(. -)] , frequency=>[3,3] );
+ while ( my @x = $o->next_multiset ) {
+   my $p = Math::Combinatorics->new( data=>\@x );
+   while ( my @y = $p->next_string ) {
+     #do something
+   }
+ }
 
-"different words obtained permuting the letters of the word PARROT".
+=item multiset/multichoose - nCRk
 
-=item nCRk
+ http://mathworld.wolfram.com/Multiset.html
 
-"ways to extract 3 balls at once of a bag with black and white balls".
+"ways to extract 3 balls at once of a bag with 3 black and 3 white balls".
+
+ $o = Math::Combinatorics->new( count=>3 , data=>[qw(white black)] , frequency=>[3,3] );
+ while ( my @x = $o->next_multiset ) {
+   #do something
+ }
 
 =back
 
@@ -126,7 +139,10 @@ namespace.  no symbols are exported by default.  see pod documentation below for
 method descriptions.
 
   combine
+  derange
+  multiset
   permute
+  string
   factorial
 
 =head1 AUTHOR
@@ -141,23 +157,29 @@ can redistribute it and/or modify it under the same terms as Perl itself.
 
 Thanks to everyone for helping to make this a better module.
 
-For adding new features: Carlos Rica, David Coppit
+For adding new features: Carlos Rica, David Coppit, Carlos Segre
 
-For bug reports: Ying Yang, Joerg Beyer, Marc Logghe
+For bug reports: Ying Yang, Joerg Beyer, Marc Logghe, Yunheng Wang,
+Torsten Seemann, Gerrit Haase, Joern Behre
 
 =head1 BUGS / TODO
 
 Report them to the author.
 
-* A known bug (more of a missing feature, actually) does not allow parameterization of k
-for nPk in permute().  it is assumed k == n.  L</permute()> for details.  You can work
-around this by making calls to both L</permute()> and L</combine()>
+ * Need more extensive unit tests.
 
-* No implementation of Stirling Numbers of the Second Kind, or Bell Numbers.
+   * tests for new()'s frequency argment
 
-http://mathworld.wolfram.com/StirlingNumberoftheSecondKind.html
+ * A known bug (more of a missing feature, actually) does not allow parameterization of k
+ for nPk in permute().  it is assumed k == n.  L</permute()> for details.  You can work
+ around this by making calls to both L</permute()> and L</combine()>
 
-http://mathworld.wolfram.com/BellNumber.html
+ * Lots of really interesting stuff from Mathworld.Wolfram.com.  MathWorld rocks!  Expect
+ to see implementation of more concepts from their site, e.g.:
+
+   http://mathworld.wolfram.com/BellNumber.html
+   http://mathworld.wolfram.com/StirlingNumberoftheSecondKind.html
+   http://mathworld.wolfram.com/Word.html
 
 =head1 SEE ALSO
 
@@ -167,20 +189,22 @@ L<Set::Bag>
 
 L<String::Combination> (alas misnamed, it actually returns permutations on a string).
 
-http://perlmonks.thepen.com/29374.html
+ http://perlmonks.thepen.com/29374.html
 
-http://groups.google.com/groups?selm=38568F79.13680B86%40physik.tu-muenchen.de&output=gplain
+ http://groups.google.com/groups?selm=38568F79.13680B86%40physik.tu-muenchen.de&output=gplain
+
 
 =cut
 
 package Math::Combinatorics;
 
 use strict;
+use Data::Dumper;
 require Exporter;
 
 our @ISA = qw(Exporter);
-our @EXPORT = qw( combine permute factorial);
-our $VERSION = '0.05';
+our @EXPORT = qw( combine derange factorial permute );
+our $VERSION = '0.06';
 
 =head1 EXPORTED FUNCTIONS
 
@@ -207,6 +231,10 @@ our $VERSION = '0.05';
            C<sort {$a cmp $b}> would not be appropriate, use the
            object-oriented API.  See L</new()> and the B<compare> option.
 
+           Identical items are assumed to be non-unique.  That is, calling
+           C<combine(1,'a','a') yields two sets: {a}, and {a}.  See
+           L</next_multiset() if this is not the desired behavior.
+
 =cut
 
 sub combine {
@@ -220,6 +248,70 @@ sub combine {
   }
 
   return @result;
+}
+
+=head2 derange()
+
+ Usage   : my @deranges = derange(@n);
+ Function: implements !n, a derangement of n items in which none of the
+           items appear in their originally ordered place.
+ Example : my @n = qw(a b c);
+           my @d = derange(@n);
+           print join "\n", map { join " ", @$_ } @d;
+           # prints:
+           # a c b
+           # b a c
+           # b c a
+           # c a b
+           # c b a
+ Returns : a list of arrays, where each array contains a derangement of
+           k items from n (where k == n).
+ Args    : a list of items to be deranged.
+ Note    : k should really be parameterizable.  this will happen
+           in a later version of the module.  send me a patch to
+           make that version come out sooner.
+ Notes   : data is internally assumed to be alphanumeric.  this is necessary
+           to efficiently generate combinations of large sets.  if you need
+           combinations of non-alphanumeric data, or on data
+           C<sort {$a cmp $b}> would not be appropriate, use the
+           object-oriented API.  See L</new()>, and the B<compare> option.
+
+=cut
+
+sub derange {
+  my(@n) = @_;
+
+  my @result = ();
+
+  my $c = __PACKAGE__->new(data => [@n]);
+  while(my(@derange) = $c->next_derangement){
+    push @result, [@derange];
+  }
+
+  return @result;
+}
+
+=head2 factorial()
+
+ Usage   : my $f = factorial(4); #returns 24, or 4*3*2*1
+ Function: calculates n! (n factorial).
+ Returns : undef if n is non-integer or n < 0
+ Args    : a positive, non-zero integer
+ Note    : this function is used internally by combine() and permute()
+
+=cut
+
+sub factorial {
+  my $n = shift;
+  return undef unless $n >= 0 and $n == int($n);
+
+  my $f;
+
+  for($f = 1 ; $n > 0 ; $n--){
+    $f *= $n
+  }
+
+  return $f;
 }
 
 =head2 permute()
@@ -252,6 +344,10 @@ sub combine {
            C<sort {$a cmp $b}> would not be appropriate, use the
            object-oriented API.  See L</new()>, and the B<compare> option.
 
+           Identical items are assumed to be non-unique.  That is, calling
+           C<permute('a','a') yields two sets: {a,a}, and {a,a}.  See
+           L</next_string() if this is not the desired behavior.
+
 =cut
 
 sub permute {
@@ -260,34 +356,11 @@ sub permute {
   my @result = ();
 
   my $c = __PACKAGE__->new(data => [@n]);
-  while(my(@combo) = $c->next_permutation){
-    push @result, [@combo];
+  while(my(@permu) = $c->next_permutation){
+    push @result, [@permu];
   }
 
   return @result;
-}
-
-=head2 factorial()
-
- Usage   : my $f = factorial(4); #returns 24, or 4*3*2*1
- Function: calculates n! (n factorial).
- Returns : undef if n is non-integer or n < 0
- Args    : a positive, non-zero integer
- Note    : this function is used internally by combine() and permute()
-
-=cut
-
-sub factorial {
-  my $n = shift;
-  return undef unless $n >= 0 and $n == int($n);
-
-  my $f;
-
-  for($f = 1 ; $n > 0 ; $n--){
-    $f *= $n
-  }
-
-  return $f;
 }
 
 =head1 CONSTRUCTOR
@@ -320,7 +393,7 @@ sub factorial {
            compare   - optional subroutine reference used in sorting elements of the set.  examples:
 
                        #appropriate for character elements
-                       compare => sub { $_[0] cmp $_[1] }               
+                       compare => sub { $_[0] cmp $_[1] }
                        #appropriate for numeric elements
                        compare => sub { $_[0] <=> $_[1] }
                        #appropriate for object elements, perhaps
@@ -339,22 +412,33 @@ sub new {
   #convert bag to set
   my $freq            = $arg{frequency};
   if(ref($freq) eq 'ARRAY' and scalar(@$freq) == scalar(@{$arg{data}})){
+    $self->{frequency}++;
     my @bag = @{$arg{data}};
     my @set = ();
 
-    while(my $type = shift @bag){
+    #allow '0 but defined' elements (Yunheng Wang)
+    foreach my $type ( @bag ) {
       my $f = shift @$freq;
       next if $f < 1;
       for(1..$f){
-        push @set, $type;
+        #we push on a reference to make sure, for instance, that objects
+        #are identical and not copied
+        push @set, \$type;
       }
     }
     $arg{data} = \@set;
   }
+  elsif(!ref($freq)){
+    $arg{data} = [map { \$_ } @{$arg{data}}];
+  }
+
+#warn join ' ', @{$arg{data}};
 
   my $compare = $self->{compare};
 
-  $self->{data}    = [sort {&$compare($a,$b)} @{$arg{data}}];
+  $self->{data} = [sort {&$compare($a,$b)} map {\$_} @{$arg{data}}];
+
+#warn Dumper($self->{data});
 
   $self->{cin} = 1;
   $self->{pin} = 1;
@@ -373,11 +457,22 @@ sub new {
  Returns : returns a combination of $count items from @data (see L</new()>).
            repeated calls retrieve all unique combinations of $count elements.
            a returned empty list signifies all combinations have been iterated.
+ Note    : this method may only be used if a B<frequency> argument is B<NOT>
+           given to L</new()>, otherwise use L</next_multiset()>.
  Args    : none.
 
 =cut
 
 sub next_combination {
+  my $self = shift;
+  if ( $self->{frequency} ) {
+    print STDERR "must use next_multiset() if 'frequency' argument passed to constructor\n";
+    return ();
+  }
+  return $self->_next_combination;
+}
+
+sub _next_combination {
   my $self = shift;
   my $data = $self->data();
   my $combo_end = $self->count();
@@ -387,12 +482,15 @@ sub next_combination {
 
   my @result;
 
+  return () if scalar(@$data) < $self->count();
+
   if($self->{cin}){
     $self->{cin} = 0;
 
     for(0..$self->count-1){
-      push @result, $data->[$_];
+      push @result, $${ $data->[$_] };
     }
+#warn 1;
     return @result;
   }
 
@@ -409,8 +507,9 @@ sub next_combination {
     $self->swap($combo,$total_set);
 
     for(0..$self->count-1){
-      push @result, $data->[$_];
+      push @result, $${ $data->[$_] };
     }
+#warn 2;
     return @result;
   }
 
@@ -419,6 +518,7 @@ sub next_combination {
 
   if ($combo == $begin) {
     $self->rotate($begin, $combo_end, $end);
+#warn 3;
     return ();
   }
 
@@ -433,12 +533,80 @@ sub next_combination {
   $self->rotate($combo, $combo_next, $end);
   $self->rotate($combo_end, $sort_pos, $end);
 
-#warn @$data;
-
   for(0..$self->count-1){
-    push @result, $data->[$_];
+    push @result, $${ $data->[$_] };
   }
+#warn 4;
   return @result;
+}
+
+=head2 next_derangement()
+
+ Usage   : my @derangement = $c->next_derangement();
+ Function: get derangements for @data.
+ Returns : returns a permutation of items from @data (see L</new()>),
+           where none of the items appear in their natural order.  repeated calls
+           retrieve all unique derangements of @data elements.  a returned empty
+           list signifies all derangements have been iterated.
+ Args    : none.
+
+=cut
+
+sub next_derangement {
+  my $self = shift;
+  my $data = $self->data();
+
+  while ( my @perm = $self->next_permutation() ) {
+    my $ok = 1;
+    my $i = 0;
+    foreach my $x ( @perm ) {
+      $ok = 0 and last if $x eq $${ $data->[$i] };
+      $i++;
+    }
+
+    next unless $ok;
+    return @perm;
+  }
+
+  return ();
+}
+
+=head2 next_multiset()
+
+ Usage   : my @multiset = $c->next_multiset();
+ Function: get multisets for @data.
+ Returns : returns a multiset of items from @data (see L</new()>).
+           a multiset is a special type of combination where the set from which
+           combinations are drawn contains items that are indistinguishable.  use
+           L</next_multiset()> when a B<frequency> argument is passed to L</new()>.
+           repeated calls retrieve all unique multisets of @data elements.  a
+           returned empty list signifies all multisets have been iterated.
+ Note    : this method may only be used if a B<frequency> argument is given to
+           L</new()>, otherwise use L</next_combination()>.
+ Args    : none.
+
+=cut
+
+sub next_multiset {
+  my $self = shift;
+
+  if ( ! $self->{frequency} ) {
+    print STDERR "must use next_combination() if 'frequency' argument not passed to constructor\n";
+    return ();
+  }
+
+  my $data = $self->data();
+  my $compare = $self->compare();
+
+  while ( my @combo = $self->_next_combination ) {
+    my $x = join '', map {scalar($$_)} sort @$data;
+    my $y = join '', map {scalar($_) } sort @combo;
+
+    next if $self->{'cache_multiset'}{$y}++;
+    return @combo;
+  }
+  $self->{'cache_multiset'} = undef;
+  return ();
 }
 
 =head2 next_permutation()
@@ -448,17 +616,28 @@ sub next_combination {
  Returns : returns a permutation of items from @data (see L</new()>).
            repeated calls retrieve all unique permutations of @data elements.
            a returned empty list signifies all permutations have been iterated.
+ Note    : this method may only be used if a B<frequency> argument is B<NOT>
+           given to L</new()>, otherwise use L</next_string()>.
  Args    : none.
 
 =cut
 
 sub next_permutation {
   my $self = shift;
+  if ( $self->{frequency} ) {
+    print STDERR "must use next_string() if 'frequency' argument passed to constructor\n";
+    return ();
+  }
+  return $self->_next_permutation;
+}
+
+sub _next_permutation {
+  my $self = shift;
   my $data = $self->data();
 
   if($self->{pin}){
     $self->{pin} = 0;
-    return @$data;
+    return map {$$$_} @$data;
   }
 
   my $cursor = $self->_permutation_cursor();
@@ -492,9 +671,47 @@ sub next_permutation {
   # map cursor to data array
   my @result;
   foreach my $c (@$cursor){
-    push @result, $data->[$c];
+    push @result, $${ $data->[$c] };
   }
   return @result;
+}
+
+=head2 next_string()
+
+ Usage   : my @string = $c->next_string();
+ Function: get strings for @data.
+ Returns : returns a multiset of items from @data (see L</new()>).
+           a multiset is a special type of permutation where the set from which
+           combinations are drawn contains items that are indistinguishable.  use
+           L</next_permutation()> when a B<frequency> argument is passed to L</new()>.
+           repeated calls retrieve all unique multisets of @data elements.  a
+           returned empty list signifies all strings have been iterated.
+ Note    : this method may only be used if a B<frequency> argument is given to
+           L</new()>, otherwise use L</next_permutation()>.
+ Args    : none.
+
+=cut
+
+sub next_string {
+  my $self = shift;
+  my $data = $self->data();
+
+  if ( ! $self->{frequency} ) {
+    print STDERR "must use next_permutation() if 'frequency' argument not passed to constructor\n";
+    return ();
+  }
+
+
+  while ( my @permu = $self->_next_permutation ) {
+    my $x = join '', map {scalar($$_)} @$data;
+    my $y = join '', map {scalar($_) } @permu;
+
+    next if $self->{'cache_string'}{$y}++;
+    return @permu;
+  }
+
+  $self->{'cache_string'} = undef;
+  return ();
 }
 
 =head1 INTERNAL FUNCTIONS AND METHODS
