@@ -18,3 +18,5 @@ Revision history for Perl extension Math::Combinatorics.
 
 0.06  o Added multiset, string, and derangement methods for OO mode
       o Corrections to documentation examples
+
+0.07  o Fixed syntax error under 5.8.7

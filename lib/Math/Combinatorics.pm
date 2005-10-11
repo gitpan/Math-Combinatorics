@@ -204,7 +204,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine derange factorial permute );
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 =head1 EXPORTED FUNCTIONS
 
@@ -560,7 +560,10 @@ sub next_derangement {
     my $ok = 1;
     my $i = 0;
     foreach my $x ( @perm ) {
-      $ok = 0 and last if $x eq $${ $data->[$i] };
+      if ( $x eq $${ $data->[$i] } ) {
+        $ok = 0;
+        last;
+      }
       $i++;
     }
 
