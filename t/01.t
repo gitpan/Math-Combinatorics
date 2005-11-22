@@ -50,7 +50,7 @@ $f = 0;
 while(my(@combo) = $c->next_combination){
   $f++;
 }
-ok($f == 6);
+ok($f == 6, ">>> $f == 6 <<<");
 
 @data = ([],[],[],[]);
 $c = Math::Combinatorics->new(
@@ -61,7 +61,7 @@ $f = 0;
 while(my(@combo) = $c->next_combination){
   $f++;
 }
-ok($f == 6);
+ok($f == 6, ">>> $f == 6 <<<");
 
 @data = (1..10);
 $c = Math::Combinatorics->new(
@@ -72,7 +72,7 @@ $f = 0;
 while(my(@combo) = $c->next_combination){
   $f++;
 }
-ok($f == 45);
+ok($f == 45, ">>> $f == 45 <<<");
 
 #####################
 # combine()
@@ -80,10 +80,10 @@ ok($f == 45);
 @data = qw( a b c d );
 
 @r = combine(2,@data);
-ok(scalar(@r) == 6);
+ok(scalar(@r) == 6, ">>> ".scalar(@r)." == 6 <<<");
 
 @r = combine(3,@data);
-ok(scalar(@r) == 4);
+ok(scalar(@r) == 4, ">>> ".scalar(@r)." == 6 <<<");
 
 #####################
 # next_multiset
@@ -98,7 +98,7 @@ $f = 0;
 while(my(@combo) = $c->next_multiset){
   $f++;
 }
-ok($f == 6);
+ok($f == 6, ">>> $f == 6 <<<");
 
 $c = Math::Combinatorics->new(
                               data => \@data,
@@ -109,7 +109,7 @@ $f = 0;
 while(my(@combo) = $c->next_multiset){
   $f++;
 }
-ok($f == 7);
+ok($f == 7, ">>> $f == 7 <<<");
 
 #####################
 # next_permutation()

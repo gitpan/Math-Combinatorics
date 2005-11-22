@@ -113,7 +113,7 @@ with a B<frequency> vector:
 
  $o = Math::Combinatorics->new( count=>3 , data=>[qw(. -)] , frequency=>[3,3] );
  while ( my @x = $o->next_multiset ) {
-   my $p = Math::Combinatorics->new( data=>\@x );
+   my $p = Math::Combinatorics->new( data=>\@x , frequency=>[map{1} @x] );
    while ( my @y = $p->next_string ) {
      #do something
    }
@@ -155,12 +155,14 @@ can redistribute it and/or modify it under the same terms as Perl itself.
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to everyone for helping to make this a better module.
+A sincere thanks to everyone for helping to make this a better module.  After initial
+development I've only had time to accept patches and improvements.  Math::Combinatorics
+continues to be developed and improved by the community.  Contributors of note include:
 
-For adding new features: Carlos Rica, David Coppit, Carlos Segre
+For adding new features: Carlos Rica, David Coppit, Carlos Segre, Lyon Lemmens
 
 For bug reports: Ying Yang, Joerg Beyer, Marc Logghe, Yunheng Wang,
-Torsten Seemann, Gerrit Haase, Joern Behre
+Torsten Seemann, Gerrit Haase, Joern Behre, Lyon Lemmens, Federico Lucifredi
 
 =head1 BUGS / TODO
 
@@ -204,7 +206,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine derange factorial permute );
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 =head1 EXPORTED FUNCTIONS
 
@@ -399,13 +401,15 @@ sub permute {
                        #appropriate for object elements, perhaps
                        compare => sub { $_[0]->value <=> $_[1]->value }
 
-                     defaults to "sub { $_[0] cmp $_[1] }"
+                     The default sort mechanism is based on references, and cannot be predicted.
+                     Improvements for a more flexible compare() mechanism are most welcome.
 
 =cut
 
 sub new {
   my($class,%arg) = @_;
   my $self = bless {}, $class;
+
   $self->{compare} = $arg{compare} || sub { $_[0] cmp $_[1] };
   $self->{count}   = $arg{count};
 
@@ -434,9 +438,20 @@ sub new {
 
 #warn join ' ', @{$arg{data}};
 
+  #OK, this is hokey, but I don't have time to fix it properly right now.
+  #We want to allow both user-specified sorting as well as our own
+  #reference-based internal sorting -- the latter only because unit tests
+  #are failing if we don't have it.  Additionally, we don't want to require
+  #the triple derefernce necessary for comparison of the pristine data in
+  #the user-supplied compare coderef.  The solution for now is to do an
+  #if/else.  If you're staring at this please fix it!
   my $compare = $self->{compare};
-
-  $self->{data} = [sort {&$compare($a,$b)} map {\$_} @{$arg{data}}];
+  if ( defined $arg{compare} ) {
+    $self->{data} = [sort {&$compare($$$a,$$$b)} map {\$_} @{$arg{data}}];
+  }
+  else {
+    $self->{data} = [sort {&$compare($a,$b)} map {\$_} @{$arg{data}}];
+  }
 
 #warn Dumper($self->{data});
 
