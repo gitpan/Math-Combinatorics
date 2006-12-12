@@ -183,6 +183,10 @@ Report them to the author.
    http://mathworld.wolfram.com/StirlingNumberoftheSecondKind.html
    http://mathworld.wolfram.com/Word.html
 
+ * Other combinatorics stuff
+   http://en.wikipedia.org/wiki/Catalan_number
+   http://en.wikipedia.org/wiki/Stirling_number
+
 =head1 SEE ALSO
 
 L<Set::Scalar>
@@ -206,7 +210,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw( combine derange factorial permute );
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 =head1 EXPORTED FUNCTIONS
 
@@ -290,6 +294,111 @@ sub derange {
     push @result, [@derange];
   }
 
+  return @result;
+}
+
+=head2 next_derangement()
+
+ Usage   : my @derangement = $c->next_derangement();
+ Function: get derangements for @data.
+ Returns : returns a permutation of items from @data (see L</new()>),
+           where none of the items appear in their natural order.  repeated calls
+           retrieve all unique derangements of @data elements.  a returned empty
+           list signifies all derangements have been iterated.
+ Args    : none.
+
+=cut
+
+sub next_derangement {
+  my $self = shift;
+  my $data = $self->data();
+
+  my $cursor = $self->_permutation_cursor();
+  my $values = @$cursor;
+  if($self->{pin}){
+    $self->{pin} = 0;
+
+    my $i;
+    for ($i = 1; $i < $values; $i += 2) {
+      $$cursor[$i - 1] = $i;
+      $$cursor[$i]     = $i - 1;
+    }
+    if ($values % 2 != 0) {
+      $$cursor[$values - 1] = $values - 3;
+      $$cursor[$values - 2] = $values - 1;
+    }
+    goto RESULT;
+  }
+  else {
+    my $values = @$cursor;
+    my $i;
+    my @found;  # stores for each element if it has been found previously
+    for ($i = 0; $i < $values; $i++) { $found[$i] = 0 }
+    my $e;
+    my $elemfound = 0;
+    for ($i = $values - 1; $i > -1; $i--) {
+      $found[$$cursor[$i]] = 1;
+      if ($i > $values - 3) { # $values-1 or $values-2
+        if ($i == $values - 2) {
+          #print "i=$i (values-2)\n";##
+          $e = $$cursor[$i + 1];
+          if ($e > $$cursor[$i] && $e != $i
+              && $$cursor[$i] != $i + 1) {
+            $$cursor[$i + 1] = $$cursor[$i];
+            $$cursor[$i] = $e;
+            #print "!\n";##
+            goto RESULT;
+          }
+        }
+        next;
+      }
+      for ($e = $$cursor[$i] + 1; $e < $values; $e++) {
+        if ($found[$e] && $e != $i) {
+          $elemfound = 1;
+          last;
+        }
+      }
+      last if ($elemfound);
+    }
+    if ($elemfound) {
+      $$cursor[$i] = $e;
+      $found[$e] = 0;
+      $i++;
+      my $j;
+      my @elems;
+      for ($j = 0; $j < $values; $j++) {
+        if ($found[$j]) { push(@elems, $j) }
+      }
+      for ($j = 0; $j < @elems; $j++) {
+        if ($elems[$j] != $i) {
+          # if the next is the last and it will be wrong:
+          if ($j + 2 == @elems
+              && $elems[$j + 1] == $i + 1) {
+            # interchange them:
+            $$cursor[$i] = $elems[$j + 1];
+            $$cursor[$i + 1] = $elems[$j];
+            last;
+          }
+          $$cursor[$i] = $elems[$j];
+        }
+        elsif ($j + 1 < @elems) {
+          # use the next element:
+          $$cursor[$i] = $elems[$j + 1];
+          $elems[$j + 1] = $elems[$j];
+        }
+        else { die() }
+        $i++;
+      }
+      goto RESULT;
+    }
+    return ();
+  }
+  RESULT:
+  # map cursor to data array
+  my @result;
+  foreach my $c (@$cursor){
+    push @result, $${ $data->[$c] };
+  }
   return @result;
 }
 
@@ -553,40 +662,6 @@ sub _next_combination {
   }
 #warn 4;
   return @result;
-}
-
-=head2 next_derangement()
-
- Usage   : my @derangement = $c->next_derangement();
- Function: get derangements for @data.
- Returns : returns a permutation of items from @data (see L</new()>),
-           where none of the items appear in their natural order.  repeated calls
-           retrieve all unique derangements of @data elements.  a returned empty
-           list signifies all derangements have been iterated.
- Args    : none.
-
-=cut
-
-sub next_derangement {
-  my $self = shift;
-  my $data = $self->data();
-
-  while ( my @perm = $self->next_permutation() ) {
-    my $ok = 1;
-    my $i = 0;
-    foreach my $x ( @perm ) {
-      if ( $x eq $${ $data->[$i] } ) {
-        $ok = 0;
-        last;
-      }
-      $i++;
-    }
-
-    next unless $ok;
-    return @perm;
-  }
-
-  return ();
 }
 
 =head2 next_multiset()
@@ -966,3 +1041,4 @@ sub _permutation_cursor {
 }
 
 1;
+
